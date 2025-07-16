@@ -1,0 +1,185 @@
+<div class="dashboard">
+  <!-- ─────── Action Buttons & Filter ─────── -->
+  <div class="actions-bar">
+    <div class="actions-left">
+      <button
+        mat-raised-button
+        color="primary"
+        (click)="openLeaveDialog()">
+        <mat-icon>add</mat-icon>
+        &nbsp;Create Leave
+      </button>
+
+      <button
+        mat-raised-button
+        color="accent"
+        class="balances-btn"
+        (click)="openBalancesDialog()">
+        <mat-icon>account_balance_wallet</mat-icon>
+        &nbsp;View Leave Balances
+      </button>
+    </div>
+
+    <mat-form-field appearance="outline" class="filter-field">
+      <mat-label>Filter by type</mat-label>
+      <mat-select [(value)]="selectedType" (selectionChange)="applyFilter()">
+        <mat-option value="">All</mat-option>
+        <mat-option *ngFor="let t of leaveTypes" [value]="t">{{ t }}</mat-option>
+      </mat-select>
+    </mat-form-field>
+  </div>
+
+  <!-- ─────── Leave History Table ─────── -->
+  <mat-card class="history-card">
+    <h2 class="block-title">
+      <mat-icon class="title-icon">history</mat-icon>
+      My Leave History
+    </h2>
+
+    <table class="simple-table" *ngIf="filteredLeaves?.length; else noLeaves">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Type</th>
+          <th>From</th>
+          <th>To</th>
+          <th>Days</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let l of filteredLeaves; index as i">
+          <td>{{ i + 1 }}</td>
+          <td>{{ l.LeaveTypeName }}</td>
+          <td>{{ l.fDate | date: 'mediumDate' }}</td>
+          <td>{{ l.tDate | date: 'mediumDate' }}</td>
+          <td>{{ l.DaysDiff }}</td>
+          <td [ngClass]="l.Approved.toLowerCase()">{{ l.Approved }}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <ng-template #noLeaves>
+      <p class="empty">You haven’t submitted any leave requests yet.</p>
+    </ng-template>
+  </mat-card>
+
+  <!-- ─────── Leave Dialog ─────── -->
+  <ng-template #leaveDialog>
+    <h2 mat-dialog-title>
+      <mat-icon>event_available</mat-icon>&nbsp;Create Leave Request
+    </h2>
+
+    <mat-card class="error-card" *ngIf="errorMsg">
+      <mat-icon class="err-icon">error</mat-icon>
+      <span>{{ errorMsg }}</span>
+    </mat-card>
+
+    <form
+      [formGroup]="leaveForm"
+      (ngSubmit)="submit()"
+      mat-dialog-content
+      class="dialog-form">
+
+      <!-- Leave Type -->
+      <mat-form-field appearance="outline" class="field">
+        <mat-label>Leave type</mat-label>
+        <mat-select formControlName="LeaveTypeID" required>
+          <mat-option [value]="null" disabled>Select leave type</mat-option>
+          <ng-container *ngIf="balances as list">
+            <mat-option *ngFor="let b of list" [value]="b.leaveTypeId">
+              {{ b.leaveTypeName }} ({{ b.remaining }} left)
+            </mat-option>
+          </ng-container>
+        </mat-select>
+      </mat-form-field>
+
+      <!-- From Date -->
+      <mat-form-field appearance="outline" class="field">
+        <mat-label>From</mat-label>
+        <input
+          matInput
+          [matDatepicker]="fromPicker"
+          formControlName="fDate"
+          (dateChange)="onFromDateChange($event)"
+          required />
+        <mat-datepicker-toggle matSuffix [for]="fromPicker"></mat-datepicker-toggle>
+        <mat-datepicker #fromPicker></mat-datepicker>
+      </mat-form-field>
+
+      <!-- To Date -->
+      <mat-form-field appearance="outline" class="field">
+        <mat-label>To</mat-label>
+        <input
+          matInput
+          [matDatepicker]="toPicker"
+          formControlName="tDate"
+          [matDatepickerFilter]="sameYearFilter"
+          required />
+        <mat-datepicker-toggle matSuffix [for]="toPicker"></mat-datepicker-toggle>
+        <mat-datepicker #toPicker></mat-datepicker>
+      </mat-form-field>
+
+      <!-- Notes -->
+      <mat-form-field appearance="outline" class="field full">
+        <mat-label>Notes</mat-label>
+        <textarea
+          matInput
+          rows="3"
+          formControlName="Notes"
+          placeholder="Optional – reason or additional info">
+        </textarea>
+      </mat-form-field>
+    </form>
+
+    <mat-dialog-actions align="end">
+      <button mat-stroked-button mat-dialog-close class="cancel">
+        Cancel
+      </button>
+      <button
+        mat-raised-button
+        color="primary"
+        [disabled]="leaveForm.invalid || loading"
+        (click)="submit()">
+        <mat-icon *ngIf="!loading">send</mat-icon>
+        <mat-progress-spinner
+          *ngIf="loading"
+          mode="indeterminate"
+          diameter="18"
+          strokeWidth="3">
+        </mat-progress-spinner>
+        &nbsp;Submit
+      </button>
+    </mat-dialog-actions>
+  </ng-template>
+
+
+  <ng-template #balancesDialog>
+    <h2 mat-dialog-title>
+      <mat-icon>account_balance_wallet</mat-icon>&nbsp;My Leave Balances
+    </h2>
+
+    <mat-dialog-content>
+      <table class="simple-table">
+        <thead>
+          <tr>
+            <th>Leave type</th>
+            <th>Remaining days</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let b of balances">
+            <td>{{ b.leaveTypeName }}</td>
+            <td>{{ b.remaining }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </mat-dialog-content>
+
+    <mat-dialog-actions align="end">
+      <button mat-raised-button color="primary" mat-dialog-close>
+        Close
+      </button>
+    </mat-dialog-actions>
+  </ng-template>
+</div>

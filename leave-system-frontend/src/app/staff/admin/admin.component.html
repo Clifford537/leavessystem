@@ -1,0 +1,242 @@
+<div class="admin-dashboard">
+  <!-- ─────── Dashboard Header ─────── -->
+  <div class="dashboard-header">
+    <h1><mat-icon>dashboard</mat-icon> Admin Dashboard</h1>
+    <div class="dashboard-nav">
+      <button mat-stroked-button (click)="setView('leave')">
+        <mat-icon>event_note</mat-icon> Leave Requests
+      </button>
+      <button mat-stroked-button (click)="setView('users')">
+        <mat-icon>people</mat-icon> Users
+      </button>
+      <button mat-stroked-button (click)="setView('titles')">
+        <mat-icon>badge</mat-icon> Job Titles
+      </button>
+      <button mat-stroked-button (click)="setView('groups')">
+        <mat-icon>groups</mat-icon> Job Groups
+      </button>
+    </div>
+  </div>
+
+  <!-- ─────── Leave Calendar View ─────── -->
+  <mat-card class="section" *ngIf="activeView === 'leave'">
+    <h2><mat-icon>calendar_month</mat-icon> Leave Calendar</h2>
+    <div class="calendar-action">
+      <button mat-stroked-button color="primary" (click)="openLeaveTableDialog()">
+        <mat-icon>table_view</mat-icon> View Requests
+      </button>
+    </div>
+
+    <!-- Calendar with custom cell template for pending leaves and badge count -->
+    <mat-calendar [dateClass]="highlightLeaveDays" (selectedChange)="openCalendarDialog($event)">
+<ng-template matCalendarCell let-date>
+  <span class="mat-calendar-body-cell-content" [ngClass]="{ 'pending-day': hasPendingLeave(date) }">
+    {{ date.getDate() }}
+    <span *ngIf="getLeaveCountBadge(date) as count" class="calendar-count">{{ count }}</span>
+  </span>
+</ng-template>
+    </mat-calendar>
+  </mat-card>
+
+  <!-- ─────── Users View ─────── -->
+  <mat-card class="section" *ngIf="activeView === 'users'">
+    <h2><mat-icon>people</mat-icon> All Staff</h2>
+    <mat-progress-spinner *ngIf="loadingStaff" class="loading-spinner" diameter="30" mode="indeterminate"></mat-progress-spinner>
+
+    <table mat-table [dataSource]="staff" *ngIf="!loadingStaff" class="mat-elevation-z2">
+      <ng-container matColumnDef="ID">
+        <th mat-header-cell *matHeaderCellDef>ID</th>
+        <td mat-cell *matCellDef="let s">{{ s.ID }}</td>
+      </ng-container>
+      <ng-container matColumnDef="Fullname">
+        <th mat-header-cell *matHeaderCellDef>Name</th>
+        <td mat-cell *matCellDef="let s">{{ s.Fullname }}</td>
+      </ng-container>
+      <ng-container matColumnDef="DepartmentName">
+        <th mat-header-cell *matHeaderCellDef>Department</th>
+        <td mat-cell *matCellDef="let s">{{ s.DepartmentName || '-' }}</td>
+      </ng-container>
+      <ng-container matColumnDef="JobgroupName">
+        <th mat-header-cell *matHeaderCellDef>Job Group</th>
+        <td mat-cell *matCellDef="let s">{{ s.JobgroupName || '-' }}</td>
+      </ng-container>
+      <ng-container matColumnDef="JobTitleName">
+        <th mat-header-cell *matHeaderCellDef>Job Title</th>
+        <td mat-cell *matCellDef="let s">{{ s.JobTitleName || '-' }}</td>
+      </ng-container>
+      <ng-container matColumnDef="view">
+        <th mat-header-cell *matHeaderCellDef>Details</th>
+        <td mat-cell *matCellDef="let s">
+          <button mat-icon-button color="primary" (click)="viewStaff(s)" matTooltip="View profile">
+            <mat-icon>visibility</mat-icon>
+          </button>
+        </td>
+      </ng-container>
+      <tr mat-header-row *matHeaderRowDef="displayedStaff"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayedStaff;"></tr>
+    </table>
+  </mat-card>
+
+  <!-- ─────── Job Titles View ─────── -->
+  <mat-card class="section" *ngIf="activeView === 'titles'">
+    <h2><mat-icon>badge</mat-icon> Job Titles</h2>
+    <mat-progress-spinner *ngIf="loadingTitles" diameter="30" mode="indeterminate"></mat-progress-spinner>
+
+    <table mat-table [dataSource]="jobTitles" *ngIf="!loadingTitles" class="mat-elevation-z1">
+      <ng-container matColumnDef="ID">
+        <th mat-header-cell *matHeaderCellDef>ID</th>
+        <td mat-cell *matCellDef="let t">{{ t.ID }}</td>
+      </ng-container>
+      <ng-container matColumnDef="Title">
+        <th mat-header-cell *matHeaderCellDef>Title</th>
+        <td mat-cell *matCellDef="let t">{{ t.Name }}</td>
+      </ng-container>
+      <tr mat-header-row *matHeaderRowDef="['ID', 'Title']"></tr>
+      <tr mat-row *matRowDef="let row; columns: ['ID', 'Title'];"></tr>
+    </table>
+  </mat-card>
+
+  <!-- ─────── Job Groups View ─────── -->
+  <mat-card class="section" *ngIf="activeView === 'groups'">
+    <h2><mat-icon>groups</mat-icon> Job Groups</h2>
+    <mat-progress-spinner *ngIf="loadingGroups" diameter="30" mode="indeterminate"></mat-progress-spinner>
+
+    <table mat-table [dataSource]="jobGroups" *ngIf="!loadingGroups" class="mat-elevation-z1">
+      <ng-container matColumnDef="ID">
+        <th mat-header-cell *matHeaderCellDef>ID</th>
+        <td mat-cell *matCellDef="let g">{{ g.ID }}</td>
+      </ng-container>
+      <ng-container matColumnDef="Name">
+        <th mat-header-cell *matHeaderCellDef>Name</th>
+        <td mat-cell *matCellDef="let g">{{ g.Name }}</td>
+      </ng-container>
+      <ng-container matColumnDef="Description">
+        <th mat-header-cell *matHeaderCellDef>Description</th>
+        <td mat-cell *matCellDef="let g">{{ g.Description || '-' }}</td>
+      </ng-container>
+      <tr mat-header-row *matHeaderRowDef="['ID', 'Name', 'Description']"></tr>
+      <tr mat-row *matRowDef="let row; columns: ['ID', 'Name', 'Description'];"></tr>
+    </table>
+  </mat-card>
+
+  <!-- ─────── Leave Table Dialog ─────── -->
+<ng-template #leaveTableDialog>
+  <h2 mat-dialog-title>
+    <mat-icon>event_note</mat-icon> All Leave Requests
+  </h2>
+  <mat-dialog-content class="dialog-content">
+    <table mat-table [dataSource]="leaves" class="mat-elevation-z2">
+      <ng-container matColumnDef="ID">
+        <th mat-header-cell *matHeaderCellDef>ID</th>
+        <td mat-cell *matCellDef="let l">{{ l.ID }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="Staff">
+        <th mat-header-cell *matHeaderCellDef>Staff</th>
+        <td mat-cell *matCellDef="let l">{{ l.StaffName }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="Type">
+        <th mat-header-cell *matHeaderCellDef>Type</th>
+        <td mat-cell *matCellDef="let l">{{ l.LeaveTypeName }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="From">
+        <th mat-header-cell *matHeaderCellDef>From</th>
+        <td mat-cell *matCellDef="let l">{{ l.fDate | date }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="To">
+        <th mat-header-cell *matHeaderCellDef>To</th>
+        <td mat-cell *matCellDef="let l">{{ l.tDate | date }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="Days">
+        <th mat-header-cell *matHeaderCellDef>Remaining Days</th>
+        <td mat-cell *matCellDef="let l">{{ l.DaysDiff }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="Status">
+        <th mat-header-cell *matHeaderCellDef>Status</th>
+        <td mat-cell *matCellDef="let l">
+          <span class="badge" [ngClass]="l.Approved.toLowerCase()">{{ l.Approved }}</span>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="actions">
+        <th mat-header-cell *matHeaderCellDef>Actions</th>
+        <td mat-cell *matCellDef="let l">
+          <button mat-icon-button color="primary" (click)="approve(l.ID, 'Approved')" [disabled]="l.Approved !== 'Pending'" matTooltip="Approve">
+            <mat-icon>check_circle</mat-icon>
+          </button>
+          <button mat-icon-button color="warn" (click)="approve(l.ID, 'Rejected')" [disabled]="l.Approved !== 'Pending'" matTooltip="Reject">
+            <mat-icon>cancel</mat-icon>
+          </button>
+        </td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="displayedLeaves"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayedLeaves;"></tr>
+    </table>
+  </mat-dialog-content>
+</ng-template>
+
+  <!-- ─────────── Staff Details Dialog ─────────── -->
+  <ng-template #detailDialog>
+    <h2 mat-dialog-title>
+      <mat-icon>person</mat-icon>&nbsp;Staff Profile
+    </h2>
+    <mat-dialog-content *ngIf="selectedStaff">
+      <p><strong>ID:</strong> {{ selectedStaff.ID }}</p>
+      <p><strong>Name:</strong> {{ selectedStaff.Fullname }}</p>
+      <p><strong>Staff No:</strong> {{ selectedStaff.Staffno }}</p>
+      <p><strong>Department:</strong> {{ selectedStaff.DepartmentName }}</p>
+      <p><strong>Job Group:</strong> {{ selectedStaff.JobgroupName }}</p>
+      <p><strong>Job Title:</strong> {{ selectedStaff.JobTitleName }}</p>
+      <p><strong>Gender:</strong> {{ selectedStaff.Gender }}</p>
+      <p><strong>ID No:</strong> {{ selectedStaff.IDno }}</p>
+      <p><strong>Document Type:</strong> {{ selectedStaff.DocType }}</p>
+      <p><strong>KRA PIN:</strong> {{ selectedStaff.PINno }}</p>
+      <p><strong>NHIF:</strong> {{ selectedStaff.NHIF }}</p>
+      <p><strong>NSSF:</strong> {{ selectedStaff.NSSF }}</p>
+      <p><strong>Address:</strong> {{ selectedStaff.Address }}</p>
+      <p><strong>Address 2:</strong> {{ selectedStaff.Address2 }}</p>
+      <p><strong>Cellphone:</strong> {{ selectedStaff.Cellphone }}</p>
+      <p><strong>Home Tel:</strong> {{ selectedStaff.HomeTel }}</p>
+      <p><strong>Next of Kin:</strong> {{ selectedStaff.NextofKin }}</p>
+    </mat-dialog-content>
+    <mat-dialog-actions align="end">
+      <button mat-raised-button color="primary" mat-dialog-close>Close</button>
+    </mat-dialog-actions>
+  </ng-template>
+
+
+  <!-- ─────── Calendar Day Dialog ─────── -->
+  <ng-template #calendarDialog>
+    <h2 mat-dialog-title>
+      <mat-icon>event</mat-icon>
+      Requests on {{ selectedDate | date:'fullDate' }}
+    </h2>
+    <mat-dialog-content class="dialog-content">
+      <ul *ngIf="leavesOnSelectedDate.length > 0; else noRequests">
+        <li *ngFor="let l of leavesOnSelectedDate">
+          <strong>{{ l.StaffName }}</strong> - {{ l.LeaveTypeName }}
+          <span class="badge" [ngClass]="l.Approved.toLowerCase()">{{ l.Approved }}</span><br />
+          <small><mat-icon>hourglass_bottom</mat-icon> Remaining: {{ l.RemainingDays }} day(s)</small>
+          <ng-container *ngIf="l.Approved === 'Pending'">
+            <button mat-icon-button color="primary" (click)="approve(l.ID, 'Approved')" matTooltip="Approve">
+              <mat-icon>check_circle</mat-icon>
+            </button>
+            <button mat-icon-button color="warn" (click)="approve(l.ID, 'Rejected')" matTooltip="Reject">
+              <mat-icon>cancel</mat-icon>
+            </button>
+          </ng-container>
+        </li>
+      </ul>
+      <ng-template #noRequests>
+        <p>No leave requests on this date.</p>
+      </ng-template>
+    </mat-dialog-content>
+  </ng-template>
+</div>
+

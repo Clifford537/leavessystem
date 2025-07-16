@@ -1,0 +1,64 @@
+/* ───────── Retro synth‑wave palette ───────── */
+$hot-pink:        #ff6ec7;
+$electric-cyan:   #00ffff;
+$electric-purple: #8a2be2;
+$charcoal:        #2e2e2e;
+$bright-gold:     #ffd700;
+
+/* ───────── Toolbar styles ───────── */
+.retro-toolbar {
+  background: linear-gradient(135deg, $electric-purple 0%, $hot-pink 50%, $electric-cyan 100%);
+  color: $bright-gold;
+  font-family: 'Orbitron', sans-serif;
+  height: 64px;
+  padding: 0 1rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  text-shadow: 0 0 4px rgba(0, 0, 0, 0.4);
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  font-size: 1.3rem;
+  letter-spacing: 1px;
+}
+
+.neon-icon {
+  margin-right: 0.5rem;
+  animation: glow 2s ease-in-out infinite alternate;
+  font-size: 1.6rem;
+}
+
+.spacer {
+  flex: 1 1 auto;
+}
+
+button[mat-icon-button] {
+  color: $bright-gold;
+  transition: color 0.3s, transform 0.3s;
+
+  &:hover {
+    color: $electric-cyan;
+    transform: scale(1.1);
+  }
+}
+
+/* ───────── Neon glow animation ───────── */
+@keyframes glow {
+  from {
+    filter: drop-shadow(0 0 2px $bright-gold);
+  }
+  to {
+    filter: drop-shadow(0 0 8px $electric-cyan);
+  }
+}
+
+/* ───────── Mobile breakpoint ───────── */
+@media (max-width: 599px) {
+  button[aria-label='Reset Password'] {
+    display: none;
+  }
+}

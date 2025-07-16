@@ -1,0 +1,90 @@
+.login-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: calc(100vh - 64px);
+  padding: 2rem;
+  background: linear-gradient(to right, #e8eaf6, #f3f4f6);
+}
+
+.login-card {
+  width: 100%;
+  max-width: 420px;
+  padding: 2rem;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 6px 20px rgba(63, 81, 181, 0.15);
+  animation: slideFade 0.6s ease-in-out;
+}
+
+.title {
+  text-align: center;
+  font-size: 22px;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+  color: #3f51b5;
+}
+
+.full-width {
+  width: 100%;
+  margin-bottom: 1.2rem;
+}
+
+.btn-wrapper {
+  display: flex;
+  justify-content: center;
+  margin-top: 1rem;
+
+  button {
+    width: 100%;
+    max-width: 300px;
+    font-weight: 600;
+    padding: 0.7rem;
+    text-transform: none;
+  }
+
+  mat-icon.icon-left {
+    margin-right: 8px;
+  }
+}
+
+.alt-option {
+  text-align: center;
+  margin-top: 1.8rem;
+  font-size: 14px;
+  color: #555;
+
+  .set-password-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 0.6rem;
+    text-transform: none;
+    font-weight: 500;
+  }
+}
+
+.error-message {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 1rem;
+  color: #d32f2f;
+  font-weight: 500;
+  font-size: 14px;
+
+  mat-icon {
+    font-size: 20px;
+  }
+}
+
+@keyframes slideFade {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

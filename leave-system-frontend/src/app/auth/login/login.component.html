@@ -1,0 +1,43 @@
+<app-header/>
+<div class="login-container">
+  <mat-card class="login-card mat-elevation-z8">
+    <h2 class="title">Login to Your Account</h2>
+
+    <form [formGroup]="form" (ngSubmit)="onSubmit()">
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>ID Number</mat-label>
+        <input matInput formControlName="idno" placeholder="Enter your ID number" />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Password</mat-label>
+        <input matInput type="password" formControlName="password" placeholder="Enter your password" />
+      </mat-form-field>
+
+      <div *ngIf="errorMessage" class="error-message">
+        <mat-icon>error</mat-icon>
+        {{ errorMessage }}
+      </div>
+
+      <div class="btn-wrapper">
+        <button
+          mat-raised-button
+          color="primary"
+          type="submit"
+          [disabled]="form.invalid || loading"
+        >
+          <mat-icon class="icon-left">login</mat-icon>
+          {{ loading ? 'Logging in...' : 'Login' }}
+        </button>
+      </div>
+    </form>
+
+    <div class="alt-option">
+      <span>Don't have a password yet?</span>
+      <a mat-flat-button color="accent" class="set-password-btn" routerLink="/setpassword">
+        <mat-icon class="icon-left">lock_reset</mat-icon>
+        Set Password
+      </a>
+    </div>
+  </mat-card>
+</div>
