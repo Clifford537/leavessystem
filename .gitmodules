@@ -1,0 +1,3 @@
+[submodule "leave-system-frontend/leave-system-frontend"]
+	path = leave-system-frontend/leave-system-frontend
+	url = https://github.com/Clifford537/leavessystem.git
