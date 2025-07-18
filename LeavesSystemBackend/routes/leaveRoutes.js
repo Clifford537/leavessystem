@@ -1,25 +1,23 @@
 const express      = require('express');
 const router       = express.Router();
-const controller   = require('../controllers/leaveController');
+const controller   = require('../controllers/leaveController'); // 👈 everything in here now
 const verifyToken  = require('../middlewares/verifyToken');
 const verifyRole   = require('../middlewares/verifyRole');
 
-// View own leave requests
+// ─────────── Leave Request Routes ─────────── //
 router.get('/mine', verifyToken, controller.getMyLeaves);
-
-// View leave balances
 router.get('/balances', verifyToken, controller.getLeaveBalances);
-
-// View leave requests within a specific date range
 router.get('/by-range', verifyToken, verifyRole('admin', 'hr'), controller.getLeavesByRange);
-
-// Submit new leave request
 router.post('/', verifyToken, controller.createLeave);
-
-// Approve or reject leave
 router.post('/:id/approve', verifyToken, verifyRole('admin', 'hr'), controller.approveLeave);
-
-// View all leave requests (admin/hr only)
 router.get('/', verifyToken, verifyRole('admin', 'hr'), controller.getAllLeaves);
+
+// ─────────── Leave Statistics Routes ─────────── //
+router.get('/stats/status', verifyToken, verifyRole('admin', 'hr'), controller.getLeaveStatusStats);
+router.get('/stats/type-days', verifyToken, verifyRole('admin', 'hr'), controller.getLeaveDaysByType);
+router.get('/stats/gender', verifyToken, verifyRole('admin', 'hr'), controller.getLeaveDaysByGender);
+router.get('/stats/monthly', verifyToken, verifyRole('admin', 'hr'), controller.getMonthlyLeaveStats);
+router.get('/stats/department', verifyToken, verifyRole('admin', 'hr'), controller.getLeaveByDepartment);
+router.get('/stats/top', verifyToken, verifyRole('admin', 'hr'), controller.getTopLeaveTakers);
 
 module.exports = router;

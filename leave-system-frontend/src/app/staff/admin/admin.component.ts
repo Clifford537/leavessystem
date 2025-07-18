@@ -2,11 +2,7 @@ import {
   Component,
   OnInit,
   ViewChild,
-  TemplateRef,
-  Directive,
-  ElementRef,
-  Input,
-  OnChanges
+  TemplateRef
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
@@ -17,29 +13,26 @@ import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatDatepickerModule, MatDatepicker } from '@angular/material/datepicker';
-import { MatCalendar } from '@angular/material/datepicker';
+import { MatDatepickerModule } from '@angular/material/datepicker';
+
+import { FullCalendarModule } from '@fullcalendar/angular';
+import dayGridPlugin from '@fullcalendar/daygrid';
+import interactionPlugin from '@fullcalendar/interaction';
+import { CalendarOptions, EventClickArg } from '@fullcalendar/core';
 
 import {
   AdminService,
   JobGroup,
   JobTitle,
   LeaveTx,
-  Staff
+  Staff,
+  LeaveStatusStat,
+  LeaveTypeDaysStat,
+  LeaveGenderStat,
+  LeaveMonthlyStat,
+  LeaveDepartmentStat,
+  TopLeaveTaker
 } from '../../core/services/admin.service';
-
-@Directive({
-  selector: '[calendarBadge]',
-})
-export class CalendarBadgeDirective implements OnChanges {
-  @Input() calendarBadge: string = '';
-
-  constructor(private el: ElementRef) {}
-
-  ngOnChanges() {
-    this.el.nativeElement.setAttribute('data-badge', this.calendarBadge);
-  }
-}
 
 @Component({
   selector: 'app-admin',
@@ -55,7 +48,7 @@ export class CalendarBadgeDirective implements OnChanges {
     MatProgressSpinnerModule,
     MatTooltipModule,
     MatDatepickerModule,
-    MatCalendar
+    FullCalendarModule
   ],
   templateUrl: './admin.component.html',
   styleUrls: ['./admin.component.scss'],
@@ -64,7 +57,6 @@ export class AdminComponent implements OnInit {
   @ViewChild('calendarDialog') calendarDialog!: TemplateRef<unknown>;
   @ViewChild('leaveTableDialog') leaveTableDialog!: TemplateRef<unknown>;
   @ViewChild('detailDialog') detailDialog!: TemplateRef<unknown>;
-  @ViewChild(MatDatepicker) datepicker!: MatDatepicker<Date>;
 
   staff: Staff[] = [];
   jobGroups: JobGroup[] = [];
@@ -83,9 +75,43 @@ export class AdminComponent implements OnInit {
   leavesOnSelectedDate: LeaveTx[] = [];
 
   displayedStaff = ['ID', 'Fullname', 'DepartmentName', 'JobgroupName', 'JobTitleName', 'view'];
-  displayedLeaves = ['ID', 'Staff', 'Type', 'From', 'To', 'Days','Status', 'actions'];
+  displayedLeaves = ['ID', 'Staff', 'Type', 'From', 'To', 'Days', 'Status', 'actions'];
 
-  activeView: 'leave' | 'users' | 'titles' | 'groups' = 'leave';
+  activeView: 'leave' | 'users' | 'titles' | 'groups' | 'stats' = 'leave';
+
+  calendarOptions: CalendarOptions = {
+    plugins: [dayGridPlugin, interactionPlugin],
+    initialView: 'dayGridMonth',
+    headerToolbar: {
+      left: 'prev,next today',
+      center: 'title',
+      right: 'dayGridMonth'
+    },
+    events: [],
+    editable: false,
+    selectable: true,
+    dateClick: this.onDateClick.bind(this),
+    eventClick: this.onEventClick.bind(this),
+    eventContent: (arg) => {
+      const title = arg.event.title;
+      const leaveCount = this.leavesByDate.get(this.formatDateKey(arg.event.start!))?.length || 0;
+      const el = document.createElement('div');
+      el.className = 'fc-event-content';
+      // Display the event title and leave count (in brackets) for the date, showing the total number of leaves
+      el.innerHTML = `
+        <div class="event-title">${title}</div>
+        ${leaveCount > 0 ? `<span class="leave-count-badge">(${leaveCount})</span>` : ''}
+      `;
+      return { domNodes: [el] };
+    }
+  };
+
+  leaveStatusStats: LeaveStatusStat[] = [];
+  leaveTypeDaysStats: LeaveTypeDaysStat[] = [];
+  leaveGenderStats: LeaveGenderStat[] = [];
+  leaveMonthlyStats: LeaveMonthlyStat[] = [];
+  leaveDepartmentStats: LeaveDepartmentStat[] = [];
+  topLeaveTakers: TopLeaveTaker[] = [];
 
   constructor(
     private admin: AdminService,
@@ -98,6 +124,7 @@ export class AdminComponent implements OnInit {
     this.fetchJobGroups();
     this.fetchJobTitles();
     this.fetchLeaves();
+    this.fetchStats();
   }
 
   setView(view: typeof this.activeView) {
@@ -137,9 +164,84 @@ export class AdminComponent implements OnInit {
       next: d => {
         this.leaves = d;
         this.groupLeavesByFDate(d);
+        this.calendarOptions = {
+          ...this.calendarOptions,
+          events: d.map(l => ({
+            title: `${l.StaffName} - ${l.LeaveTypeName}`,
+            start: l.fDate,
+            end: l.tDate,
+            color: this.getLeaveColor(l.Approved),
+            extendedProps: { ...l, leaveCount: this.leavesByDate.get(this.formatDateKey(new Date(l.fDate)))?.length || 0 }
+          }))
+        };
       },
       error: e => this.snack.open(e.error?.message ?? 'Fail loading leaves', 'OK'),
       complete: () => this.loadingLeaves = false
+    });
+  }
+
+  private fetchStats() {
+    this.admin.getLeaveStatusStats().subscribe({
+      next: stats => {
+        this.leaveStatusStats = stats.map(item => ({
+          status: (item as any).Approved ?? item.status,
+          count: item.count
+        }));
+      },
+      error: () => this.snack.open('Failed to load leave status stats', 'OK')
+    });
+
+    this.admin.getLeaveTypeDaysStats().subscribe({
+      next: stats => {
+        this.leaveTypeDaysStats = stats.map(item => ({
+          LeaveTypeName: (item as any).LeaveType ?? item.LeaveTypeName,
+          totalDays: (item as any).TotalDays ?? item.totalDays
+        }));
+      },
+      error: () => this.snack.open('Failed to load leave type days stats', 'OK')
+    });
+
+    this.admin.getLeaveGenderStats().subscribe({
+      next: stats => {
+        this.leaveGenderStats = stats.map(item => ({
+          gender: (item as any).Gender ?? item.gender,
+          totalDays: (item as any).TotalDays ?? item.totalDays
+        }));
+      },
+      error: () => this.snack.open('Failed to load leave gender stats', 'OK')
+    });
+
+    this.admin.getLeaveMonthlyStats().subscribe({
+      next: stats => {
+        this.leaveMonthlyStats = stats.map(item => {
+          const monthStr = (item as any).Month ?? '';
+          const totalDays = (item as any).TotalDays ?? item.totalDays;
+          const [year, month] = monthStr.split('-').map(Number);
+          return { year, month, totalDays };
+        });
+      },
+      error: () => this.snack.open('Failed to load leave monthly stats', 'OK')
+    });
+
+    this.admin.getLeaveDepartmentStats().subscribe({
+      next: stats => {
+        this.leaveDepartmentStats = stats.map(item => ({
+          DepartmentName: (item as any).Department ?? item.DepartmentName,
+          totalDays: (item as any).RequestCount ?? item.totalDays
+        }));
+      },
+      error: () => this.snack.open('Failed to load leave department stats', 'OK')
+    });
+
+    this.admin.getTopLeaveTakers().subscribe({
+      next: stats => {
+        this.topLeaveTakers = stats.map(item => ({
+          Fullname: item.Fullname,
+          LeaveCount: item.LeaveCount,
+          TotalDays: item.TotalDays
+        }));
+      },
+      error: () => this.snack.open('Failed to load top leave takers', 'OK')
     });
   }
 
@@ -157,39 +259,14 @@ export class AdminComponent implements OnInit {
     return date.toISOString().split('T')[0];
   }
 
-  getLeaveCountBadge(date: Date): number | null {
-    const key = this.formatDateKey(date);
-    const leaves = this.leavesByDate.get(key);
-    return leaves ? leaves.length : null;
+  getLeaveColor(status: string): string {
+    switch (status) {
+      case 'Pending': return '#fff707ff';
+      case 'Approved': return '#28a745';
+      case 'Rejected': return '#e75a0fff';
+      default: return '#007bff';
+    }
   }
-
-  hasPendingLeave(date: Date): boolean {
-    const key = this.formatDateKey(date);
-    const leaves = this.leavesByDate.get(key);
-    return leaves ? leaves.some(l => l.Approved === 'Pending') : false;
-  }
-
-  highlightLeaveDays = (date: Date): string => {
-    const key = this.formatDateKey(date);
-    const leaves = this.leavesByDate.get(key);
-
-    const count = leaves?.length || 0;
-    setTimeout(() => {
-      const cells = document.querySelectorAll('.mat-calendar-body-cell-content');
-      cells.forEach(el => {
-        const day = Number(el.textContent);
-        if (!day || isNaN(day)) return;
-        const testDate = new Date(date);
-        testDate.setDate(day);
-        const cellKey = this.formatDateKey(testDate);
-        if (cellKey === key && count > 0) {
-          el.setAttribute('data-count', String(count));
-        }
-      });
-    }, 0);
-
-    return leaves?.some(l => l.Approved === 'Pending') ? 'pending-leave-day' : '';
-  };
 
   viewStaff(s: Staff) {
     this.selectedStaff = s;
@@ -214,19 +291,23 @@ export class AdminComponent implements OnInit {
     const from = this.formatDateKey(date);
     const to = from;
     this.admin.getLeavesByRange(from, to).subscribe({
-      next: (leaves) => {
-        this.leavesOnSelectedDate = leaves;
-      },
-      error: (e) => {
+      next: leaves => this.leavesOnSelectedDate = leaves,
+      error: e => {
         this.snack.open(e.error?.message ?? 'Failed to load leaves by date', 'OK');
         this.leavesOnSelectedDate = [];
       }
     });
   }
 
-  openCalendarDialog(date: Date | null): void {
-    if (!date) return;
-    this.onDateSelected(date);
+  onDateClick(arg: any) {
+    this.selectedDate = new Date(arg.date);
+    this.onDateSelected(this.selectedDate);
+    this.dialog.open(this.calendarDialog, { width: '500px' });
+  }
+
+  onEventClick(arg: EventClickArg) {
+    this.selectedDate = new Date(arg.event.start!);
+    this.onDateSelected(this.selectedDate);
     this.dialog.open(this.calendarDialog, { width: '500px' });
   }
 

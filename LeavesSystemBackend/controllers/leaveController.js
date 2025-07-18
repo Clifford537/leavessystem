@@ -301,3 +301,108 @@ exports.getLeavesByRange = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
+
+// ─────────────────────────────────────────────────────────────
+// Leave Statistics
+// ─────────────────────────────────────────────────────────────
+
+// GET /api/leaves/stats/status
+exports.getLeaveStatusStats = async (req, res) => {
+  try {
+    const [rows] = await pool.execute(`
+      SELECT Approved, COUNT(*) AS count
+      FROM leave_transactions
+      GROUP BY Approved
+    `);
+    res.status(200).json(rows);
+  } catch (err) {
+    console.error('[getLeaveStatusStats]', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+// GET /api/leaves/stats/type-days
+exports.getLeaveDaysByType = async (req, res) => {
+  try {
+    const [rows] = await pool.execute(`
+      SELECT t.Name AS LeaveType, SUM(lt.DaysDiff) AS TotalDays
+      FROM leave_transactions lt
+      JOIN leave_types t ON t.ID = lt.LeaveTypeID
+      WHERE lt.Approved = 'Approved'
+      GROUP BY t.Name
+    `);
+    res.status(200).json(rows);
+  } catch (err) {
+    console.error('[getLeaveDaysByType]', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+// GET /api/leaves/stats/gender
+exports.getLeaveDaysByGender = async (req, res) => {
+  try {
+    const [rows] = await pool.execute(`
+      SELECT s.Gender, SUM(lt.DaysDiff) AS TotalDays
+      FROM leave_transactions lt
+      JOIN staff s ON lt.StaffID = s.ID
+      WHERE lt.Approved = 'Approved'
+      GROUP BY s.Gender
+    `);
+    res.status(200).json(rows);
+  } catch (err) {
+    console.error('[getLeaveDaysByGender]', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+// GET /api/leaves/stats/monthly
+exports.getMonthlyLeaveStats = async (req, res) => {
+  try {
+    const [rows] = await pool.execute(`
+      SELECT DATE_FORMAT(fDate, '%Y-%m') AS Month, SUM(DaysDiff) AS TotalDays
+      FROM leave_transactions
+      WHERE Approved = 'Approved'
+      GROUP BY Month
+      ORDER BY Month ASC
+    `);
+    res.status(200).json(rows);
+  } catch (err) {
+    console.error('[getMonthlyLeaveStats]', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+// GET /api/leaves/stats/department
+exports.getLeaveByDepartment = async (req, res) => {
+  try {
+    const [rows] = await pool.execute(`
+      SELECT s.Department, COUNT(lt.ID) AS RequestCount
+      FROM leave_transactions lt
+      JOIN staff s ON s.ID = lt.StaffID
+      GROUP BY s.Department
+    `);
+    res.status(200).json(rows);
+  } catch (err) {
+    console.error('[getLeaveByDepartment]', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+// GET /api/leaves/stats/top
+exports.getTopLeaveTakers = async (req, res) => {
+  try {
+    const [rows] = await pool.execute(`
+      SELECT s.Fullname, COUNT(*) AS LeaveCount, SUM(lt.DaysDiff) AS TotalDays
+      FROM leave_transactions lt
+      JOIN staff s ON s.ID = lt.StaffID
+      WHERE lt.Approved = 'Approved'
+      GROUP BY s.Fullname
+      ORDER BY TotalDays DESC
+      LIMIT 5
+    `);
+    res.status(200).json(rows);
+  } catch (err) {
+    console.error('[getTopLeaveTakers]', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
