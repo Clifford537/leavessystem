@@ -1,16 +1,32 @@
-<mat-toolbar class="retro-toolbar">
-  <span class="logo">
-    <mat-icon class="neon-icon">flare</mat-icon>
-    Leaves Management System
-  </span>
-
-  <span class="spacer"></span>
-
-  <button mat-icon-button aria-label="Login">
-    <mat-icon>login</mat-icon>
-  </button>
-
-  <button mat-icon-button aria-label="Reset Password">
-    <mat-icon>lock_reset</mat-icon>
+<mat-toolbar class="header-toolbar">
+  <div class="header-title">
+    <mat-icon routerLink="/" >event</mat-icon>
+    <span  routerLink="/" >Leave Management System</span>
+  </div>
+  <span class="header-spacer"></span>
+  <div class="header-actions" *ngIf="!isMobile">
+    <button mat-button routerLink="/login" aria-label="Login">
+      <mat-icon>login</mat-icon> Login
+    </button>
+    <button mat-button routerLink="/setpassword" aria-label="Reset Password">
+      <mat-icon>lock_reset</mat-icon> Reset Password
+    </button>
+  </div>
+  <button mat-icon-button *ngIf="isMobile" (click)="openMobileMenuDialog()" aria-label="Open menu">
+    <mat-icon>menu</mat-icon>
   </button>
 </mat-toolbar>
+
+<ng-template #mobileMenuDialog>
+  <div class="dialog-content">
+    <button mat-button routerLink="/login" (click)="dialog.closeAll()" aria-label="Login">
+      <mat-icon>login</mat-icon> Login
+    </button>
+    <button mat-button routerLink="/setpassword" (click)="dialog.closeAll()" aria-label="Reset Password">
+      <mat-icon>lock_reset</mat-icon> Reset Password
+    </button>
+  </div>
+  <mat-dialog-actions>
+    <button mat-button (click)="dialog.closeAll()" aria-label="Close">Close</button>
+  </mat-dialog-actions>
+</ng-template>
