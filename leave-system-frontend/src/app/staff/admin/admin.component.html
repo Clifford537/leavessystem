@@ -6,6 +6,9 @@
       <button mat-stroked-button (click)="setView('leave')">
         <mat-icon>event_note</mat-icon> Leave Requests
       </button>
+      <button mat-stroked-button (click)="setView('stats')">
+        <mat-icon>bar_chart</mat-icon> Statistics
+      </button>
       <button mat-stroked-button (click)="setView('users')">
         <mat-icon>people</mat-icon> Users
       </button>
@@ -14,9 +17,6 @@
       </button>
       <button mat-stroked-button (click)="setView('groups')">
         <mat-icon>groups</mat-icon> Job Groups
-      </button>
-      <button mat-stroked-button (click)="setView('stats')">
-        <mat-icon>bar_chart</mat-icon> Statistics
       </button>
     </div>
   </div>
@@ -232,63 +232,51 @@
     <div class="stats-cards-container">
       <mat-card class="stats-card">
         <mat-card-title>Status Counts</mat-card-title>
-        <mat-table [dataSource]="leaveStatusStats" class="mat-elevation-z1 stats-table">
-          <ng-container matColumnDef="status">
-            <th mat-header-cell *matHeaderCellDef>Status</th>
-            <td mat-cell *matCellDef="let stat">{{ stat.status }}</td>
-          </ng-container>
-          <ng-container matColumnDef="count">
-            <th mat-header-cell *matHeaderCellDef>Count</th>
-            <td mat-cell *matCellDef="let stat">{{ stat.count }}</td>
-          </ng-container>
-          <tr mat-header-row *matHeaderRowDef="['status', 'count']"></tr>
-          <tr mat-row *matRowDef="let row; columns: ['status', 'count'];"></tr>
-        </mat-table>
+        <canvas baseChart
+                [data]="leaveStatusChartData"
+                [options]="pieChartOptions"
+                [type]="'pie'">
+        </canvas>
       </mat-card>
       <mat-card class="stats-card">
         <mat-card-title>Leave Days by Type</mat-card-title>
-        <mat-table [dataSource]="leaveTypeDaysStats" class="mat-elevation-z1 stats-table">
-          <ng-container matColumnDef="LeaveTypeName">
-            <th mat-header-cell *matHeaderCellDef>Leave Type</th>
-            <td mat-cell *matCellDef="let stat">{{ stat.LeaveTypeName }}</td>
-          </ng-container>
-          <ng-container matColumnDef="totalDays">
-            <th mat-header-cell *matHeaderCellDef>Total Days</th>
-            <td mat-cell *matCellDef="let stat">{{ stat.totalDays }}</td>
-          </ng-container>
-          <tr mat-header-row *matHeaderRowDef="['LeaveTypeName', 'totalDays']"></tr>
-          <tr mat-row *matRowDef="let row; columns: ['LeaveTypeName', 'totalDays'];"></tr>
-        </mat-table>
+        <canvas baseChart
+                [data]="leaveTypeDaysChartData"
+                [options]="barChartOptions"
+                [type]="'bar'">
+        </canvas>
       </mat-card>
       <mat-card class="stats-card">
         <mat-card-title>Leave by Gender</mat-card-title>
-        <mat-table [dataSource]="leaveGenderStats" class="mat-elevation-z1 stats-table">
-          <ng-container matColumnDef="gender">
-            <th mat-header-cell *matHeaderCellDef>Gender</th>
-            <td mat-cell *matCellDef="let stat">{{ stat.gender }}</td>
-          </ng-container>
-          <ng-container matColumnDef="totalDays">
-            <th mat-header-cell *matHeaderCellDef>Total Days</th>
-            <td mat-cell *matCellDef="let stat">{{ stat.totalDays }}</td>
-          </ng-container>
-          <tr mat-header-row *matHeaderRowDef="['gender', 'totalDays']"></tr>
-          <tr mat-row *matRowDef="let row; columns: ['gender', 'totalDays'];"></tr>
-        </mat-table>
+        <canvas baseChart
+                [data]="leaveGenderChartData"
+                [options]="pieChartOptions"
+                [type]="'pie'">
+        </canvas>
       </mat-card>
       <mat-card class="stats-card">
         <mat-card-title>Top Leave Takers</mat-card-title>
-        <mat-table [dataSource]="topLeaveTakers" class="mat-elevation-z1 stats-table">
-          <ng-container matColumnDef="Fullname">
-            <th mat-header-cell *matHeaderCellDef>Staff</th>
-            <td mat-cell *matCellDef="let stat">{{ stat.Fullname }}</td>
-          </ng-container>
-          <ng-container matColumnDef="TotalDays">
-            <th mat-header-cell *matHeaderCellDef>Total Days</th>
-            <td mat-cell *matCellDef="let stat">{{ stat.TotalDays }}</td>
-          </ng-container>
-          <tr mat-header-row *matHeaderRowDef="['Fullname', 'TotalDays']"></tr>
-          <tr mat-row *matRowDef="let row; columns: ['Fullname', 'TotalDays'];"></tr>
-        </mat-table>
+        <canvas baseChart
+                [data]="topLeaveTakersChartData"
+                [options]="barChartOptions"
+                [type]="'bar'">
+        </canvas>
+      </mat-card>
+      <mat-card class="stats-card">
+        <mat-card-title>Leave by Month</mat-card-title>
+        <canvas baseChart
+                [data]="leaveMonthlyChartData"
+                [options]="barChartOptions"
+                [type]="'bar'">
+        </canvas>
+      </mat-card>
+      <mat-card class="stats-card">
+        <mat-card-title>Leave by Department</mat-card-title>
+        <canvas baseChart
+                [data]="leaveDepartmentChartData"
+                [options]="barChartOptions"
+                [type]="'bar'">
+        </canvas>
       </mat-card>
     </div>
   </mat-card>
