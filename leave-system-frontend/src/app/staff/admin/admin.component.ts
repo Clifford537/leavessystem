@@ -2,7 +2,9 @@ import {
   Component,
   OnInit,
   ViewChild,
-  TemplateRef
+  TemplateRef,
+  Pipe,
+  PipeTransform
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
@@ -32,7 +34,6 @@ import {
   Tooltip
 } from 'chart.js';
 import { BaseChartDirective } from 'ng2-charts';
-
 import {
   AdminService,
   JobGroup,
@@ -46,8 +47,8 @@ import {
   LeaveDepartmentStat,
   TopLeaveTaker
 } from '../../core/services/admin.service';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 
-// Register chart.js components
 Chart.register(
   PieController,
   BarController,
@@ -58,6 +59,14 @@ Chart.register(
   Legend,
   Tooltip
 );
+
+@Pipe({ name: 'safeUrl', standalone: true })
+export class SafeUrlPipe implements PipeTransform {
+  constructor(private sanitizer: DomSanitizer) {}
+  transform(url: string): SafeResourceUrl {
+    return this.sanitizer.bypassSecurityTrustResourceUrl(url);
+  }
+}
 
 @Component({
   selector: 'app-admin',
@@ -74,7 +83,8 @@ Chart.register(
     MatTooltipModule,
     MatDatepickerModule,
     FullCalendarModule,
-    BaseChartDirective
+    BaseChartDirective,
+    SafeUrlPipe
   ],
   templateUrl: './admin.component.html',
   styleUrls: ['./admin.component.scss'],
@@ -83,6 +93,7 @@ export class AdminComponent implements OnInit {
   @ViewChild('calendarDialog') calendarDialog!: TemplateRef<unknown>;
   @ViewChild('leaveTableDialog') leaveTableDialog!: TemplateRef<unknown>;
   @ViewChild('detailDialog') detailDialog!: TemplateRef<unknown>;
+  @ViewChild('leaveDetailsDialog') leaveDetailsDialog!: TemplateRef<unknown>;
 
   staff: Staff[] = [];
   jobGroups: JobGroup[] = [];
@@ -99,13 +110,13 @@ export class AdminComponent implements OnInit {
   selectedStaff?: Staff;
   selectedDate: Date = new Date();
   leavesOnSelectedDate: LeaveTx[] = [];
+  selectedLeave: LeaveTx | null = null;
 
   displayedStaff = ['ID', 'Fullname', 'DepartmentName', 'JobgroupName', 'JobTitleName', 'view'];
   displayedLeaves = ['ID', 'Staff', 'Type', 'From', 'To', 'Days', 'Status', 'actions'];
 
   activeView: 'leave' | 'users' | 'titles' | 'groups' | 'stats' = 'leave';
 
-  // Chart configurations
   leaveStatusChartData: ChartConfiguration['data'] = { datasets: [], labels: [] };
   leaveTypeDaysChartData: ChartConfiguration['data'] = { datasets: [], labels: [] };
   leaveGenderChartData: ChartConfiguration['data'] = { datasets: [], labels: [] };
@@ -178,6 +189,22 @@ export class AdminComponent implements OnInit {
 
   setView(view: typeof this.activeView) {
     this.activeView = view;
+  }
+
+  isImage(url: string): boolean {
+    return /\.(jpg|jpeg|png)$/i.test(url);
+  }
+
+  isPdf(url: string): boolean {
+    return /\.pdf$/i.test(url);
+  }
+
+  isDocx(url: string): boolean {
+    return /\.docx$/i.test(url);
+  }
+
+  isUrl(url: string): boolean {
+    return /^https?:\/\/.+/i.test(url) && !this.isImage(url) && !this.isPdf(url) && !this.isDocx(url);
   }
 
   private fetchStaff() {
@@ -370,6 +397,11 @@ export class AdminComponent implements OnInit {
     this.dialog.open(this.detailDialog, { width: '600px' });
   }
 
+  openLeaveDetailsDialog(leave: LeaveTx): void {
+    this.selectedLeave = leave;
+    this.dialog.open(this.leaveDetailsDialog, { width: '600px' });
+  }
+
   approve(id: number, status: 'Approved' | 'Rejected') {
     this.admin.approveLeave(id, status).subscribe({
       next: () => {
@@ -386,16 +418,14 @@ export class AdminComponent implements OnInit {
   onDateSelected(date: Date): void {
     this.selectedDate = date;
     const selectedDateStr = this.formatDateKey(date);
-    // Filter leaves where the selected date is between fDate and tDate (inclusive)
     this.leavesOnSelectedDate = this.leaves.filter(leave => {
       const fDate = this.formatDateKey(new Date(leave.fDate));
       const tDate = this.formatDateKey(new Date(leave.tDate));
       return selectedDateStr >= fDate && selectedDateStr <= tDate;
     });
-    // If no leaves found locally, try fetching from the server
     if (this.leavesOnSelectedDate.length === 0) {
       const from = this.formatDateKey(date);
-      const to = from; // Keep single-day fetch for consistency
+      const to = from;
       this.admin.getLeavesByRange(from, to).subscribe({
         next: leaves => {
           this.leavesOnSelectedDate = leaves.filter(leave => {

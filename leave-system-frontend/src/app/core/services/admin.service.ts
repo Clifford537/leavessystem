@@ -4,27 +4,19 @@ import {
   HttpErrorResponse,
   HttpHeaders,
 } from '@angular/common/http';
-import { Observable, catchError, throwError } from 'rxjs';
-
-import { AuthService } from './auth.service'; // JWT provider
-
-/* ─────────────────────────────────────────
- * Models
- * ───────────────────────────────────────── */
+import { Observable, catchError, throwError, map } from 'rxjs';
+import { AuthService } from './auth.service';
 
 export interface Staff {
   ID: number;
   Fullname: string;
   Staffno: string;
-
   DepartmentName: string | null;
   JobgroupName: string | null;
   JobTitleName: string | null;
-
   Department?: number | string | null;
   Jobgroup?: number | string | null;
   JobTitle?: number | string | null;
-
   IDno?: string | null;
   DocType?: 'ID' | 'PASSPORT' | string | null;
   PINno?: string | null;
@@ -36,7 +28,6 @@ export interface Staff {
   HomeTel?: string | null;
   NextofKin?: string | null;
   NextofKinTel?: string | null;
-
   Gender: 'Male' | 'Female' | string;
 }
 
@@ -62,9 +53,9 @@ export interface LeaveTx {
   DaysDiff: number;
   Approved: 'Pending' | 'Approved' | 'Rejected';
   RemainingDays: number;
+  Notes?: string | null;
+  Attachment?: string | null;
 }
-
-/* ───────── Stats Interfaces ───────── */
 
 export interface LeaveStatusStat {
   status: string;
@@ -93,14 +84,10 @@ export interface LeaveDepartmentStat {
 }
 
 export interface TopLeaveTaker {
-  Fullname: string;   // as returned by your API
+  Fullname: string;
   LeaveCount: number;
   TotalDays: number;
 }
-
-/* ─────────────────────────────────────────
- * Service
- * ───────────────────────────────────────── */
 
 @Injectable({ providedIn: 'root' })
 export class AdminService {
@@ -108,7 +95,8 @@ export class AdminService {
   private groupsUrl = 'http://localhost:5000/api/jobgroups';
   private titlesUrl = 'http://localhost:5000/api/jobtitles';
   private leavesUrl = 'http://localhost:5000/api/leaves';
-  private statsUrl = 'http://localhost:5000/api/leaves/stats'; 
+  private statsUrl = 'http://localhost:5000/api/leaves/stats';
+  private readonly UPLOADS_BASE = 'http://localhost:5000';
 
   constructor(private http: HttpClient, private auth: AuthService) {}
 
@@ -123,7 +111,6 @@ export class AdminService {
     return throwError(() => err);
   }
 
-  /* Staff */
   getAllStaff(): Observable<Staff[]> {
     return this.http.get<Staff[]>(this.staffUrl, this.opts()).pipe(catchError(this.h));
   }
@@ -132,7 +119,6 @@ export class AdminService {
     return this.http.get<Staff>(`${this.staffUrl}/${id}`, this.opts()).pipe(catchError(this.h));
   }
 
-  /* Job Groups / Titles */
   getJobGroups(): Observable<JobGroup[]> {
     return this.http.get<JobGroup[]>(this.groupsUrl, this.opts()).pipe(catchError(this.h));
   }
@@ -141,9 +127,16 @@ export class AdminService {
     return this.http.get<JobTitle[]>(this.titlesUrl, this.opts()).pipe(catchError(this.h));
   }
 
-  /* Leaves */
   getAllLeaves(): Observable<LeaveTx[]> {
-    return this.http.get<LeaveTx[]>(this.leavesUrl, this.opts()).pipe(catchError(this.h));
+    return this.http.get<LeaveTx[]>(this.leavesUrl, this.opts()).pipe(
+      map(leaves => leaves.map(leave => ({
+        ...leave,
+        Attachment: leave.Attachment && leave.Attachment.startsWith('/uploads')
+          ? `${this.UPLOADS_BASE}${leave.Attachment}`
+          : leave.Attachment
+      }))),
+      catchError(this.h)
+    );
   }
 
   approveLeave(id: number, status: 'Approved' | 'Rejected'): Observable<any> {
@@ -152,10 +145,17 @@ export class AdminService {
 
   getLeavesByRange(from: string, to: string): Observable<LeaveTx[]> {
     const url = `${this.leavesUrl}/by-range?from=${from}&to=${to}`;
-    return this.http.get<LeaveTx[]>(url, this.opts()).pipe(catchError(this.h));
+    return this.http.get<LeaveTx[]>(url, this.opts()).pipe(
+      map(leaves => leaves.map(leave => ({
+        ...leave,
+        Attachment: leave.Attachment && leave.Attachment.startsWith('/uploads')
+          ? `${this.UPLOADS_BASE}${leave.Attachment}`
+          : leave.Attachment
+      }))),
+      catchError(this.h)
+    );
   }
 
-  /* Stats */
   getLeaveStatusStats(): Observable<LeaveStatusStat[]> {
     return this.http.get<LeaveStatusStat[]>(`${this.statsUrl}/status`, this.opts()).pipe(catchError(this.h));
   }

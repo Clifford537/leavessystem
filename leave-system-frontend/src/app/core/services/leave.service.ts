@@ -4,49 +4,45 @@ import {
   HttpErrorResponse,
   HttpHeaders
 } from '@angular/common/http';
-import { Observable, catchError, throwError } from 'rxjs';
+import { Observable, catchError, throwError, map } from 'rxjs';
+import { AuthService } from './auth.service';
 
-import { AuthService } from './auth.service';   // <-- pulls JWT from here
-
-/* ───────── Data‑transfer objects ───────── */
 export interface CreateLeaveDto {
   LeaveTypeID: number;
-  fDate: string;       // 'YYYY-MM-DD'
-  tDate: string;       // 'YYYY-MM-DD'
+  fDate: string;
+  tDate: string;
   Notes?: string;
+  Attachment?: string | File;
 }
 
 export interface LeaveBalance {
-  leaveTypeId:   number;
+  leaveTypeId: number;
   leaveTypeName: string;
-  remaining:     number;
+  remaining: number;
 }
 
 export interface LeaveTransaction {
-  ID:            number;
-  LeaveTypeID:   number;
+  ID: number;
+  LeaveTypeID: number;
   LeaveTypeName: string;
-  fDate:         string;
-  tDate:         string;
-  Notes:         string | null;
-  DaysDiff:      number;
-  Approved:      'Pending' | 'Approved' | 'Rejected';
+  fDate: string;
+  tDate: string;
+  Notes: string | null;
+  DaysDiff: number;
+  Approved: 'Pending' | 'Approved' | 'Rejected';
+  Attachment: string | null;
 }
 
 @Injectable({ providedIn: 'root' })
 export class LeaveService {
-
-  /** Base path now points to /api/leaves (plural) */
   private readonly BASE = 'http://localhost:5000/api/leaves';
+  private readonly UPLOADS_BASE = 'http://localhost:5000';
 
   constructor(
     private http: HttpClient,
     private auth: AuthService
   ) {}
 
-  /* ───────── helpers ───────── */
-
-  /** Attach JWT if available */
   private authOpts() {
     const token = this.auth.getToken();
     return token
@@ -58,23 +54,26 @@ export class LeaveService {
     return throwError(() => err);
   }
 
-  /* ───────── API calls ───────── */
-
-  /** POST  /api/leaves  → create a leave */
-  createLeave(dto: CreateLeaveDto): Observable<any> {
-    return this.http.post(`${this.BASE}`, dto, this.authOpts())
+  createLeave(formData: FormData): Observable<any> {
+    return this.http.post(`${this.BASE}`, formData, this.authOpts())
       .pipe(catchError(this.handle));
   }
 
-  /** GET  /api/leaves/balances  → current remaining days (Approved + Pending) */
   getBalances(): Observable<LeaveBalance[]> {
     return this.http.get<LeaveBalance[]>(`${this.BASE}/balances`, this.authOpts())
       .pipe(catchError(this.handle));
   }
 
-  /** GET  /api/leaves/mine  → transactions for the logged‑in user */
   getMyLeaves(): Observable<LeaveTransaction[]> {
     return this.http.get<LeaveTransaction[]>(`${this.BASE}/mine`, this.authOpts())
-      .pipe(catchError(this.handle));
+      .pipe(
+        map(leaves => leaves.map(leave => ({
+          ...leave,
+          Attachment: leave.Attachment && leave.Attachment.startsWith('/uploads')
+            ? `${this.UPLOADS_BASE}${leave.Attachment}`
+            : leave.Attachment
+        }))),
+        catchError(this.handle)
+      );
   }
 }

@@ -319,6 +319,91 @@ mat-dialog-content #noRequests p {
   font-weight: 500;
 }
 
+/* Leave Details Dialog */
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid #e5e7eb;
+  font-size: 13px;
+  color: #4b5563;
+}
+
+.detail-row .label {
+  font-weight: 600;
+  color: #1e293b;
+  width: 120px;
+}
+
+.detail-row .value {
+  flex: 1;
+  text-align: left;
+}
+
+.detail-row .value .badge {
+  padding: 5px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: capitalize;
+  min-width: 70px;
+  text-align: center;
+}
+
+.detail-row .value .badge.approved {
+  background-color: #d1fae5;
+  color: #059669;
+}
+
+.detail-row .value .badge.rejected {
+  background-color: #fee2e2;
+  color: #dc2626;
+}
+
+.detail-row .value .badge.pending {
+  background-color: #fef3c7;
+  color: #d97706;
+}
+
+.attachment-preview {
+  max-width: 100%;
+  max-height: 200px;
+  margin-top: 10px;
+  display: block;
+  border-radius: 6px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.pdf-preview {
+  width: 100%;
+  height: 300px;
+  border: none;
+  border-radius: 6px;
+  background-color: #fff;
+}
+
+.attachment-message {
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+}
+
+.attachment-link {
+  color: #0284c7;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 500;
+}
+
+.attachment-link:hover {
+  text-decoration: underline;
+  color: #0369a1;
+}
+
 /* Calendar Styling */
 full-calendar .fc {
   cursor: pointer;
@@ -355,16 +440,16 @@ full-calendar .fc .fc-daygrid-day.fc-day-today {
 }
 
 full-calendar .fc .fc-event {
-  border-radius: 50px; /* Highly rounded bars */
-  padding: 0.3px 2px; /* Very thin bars */
-  font-size: 8px; /* Smaller font size */
+  border-radius: 50px;
+  padding: 0.3px 2px;
+  font-size: 8px;
   font-weight: 500;
-  line-height: 1.1; /* Tighter line height */
-  height: 12px; /* Thinner height */
+  line-height: 1.1;
+  height: 12px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  margin: 0.2px 0; /* Minimal spacing */
+  margin: 0.2px 0;
   box-shadow: 0 1px 1px rgba(0, 0, 0, 0.06);
   transition: transform 0.2s ease, background-color 0.2s ease;
 }
@@ -567,6 +652,14 @@ mat-dialog-actions button {
   .dialog-content table th,
   .dialog-content table td {
     padding: 8px;
+  }
+
+  .attachment-preview {
+    max-height: 150px;
+  }
+
+  .pdf-preview {
+    height: 200px;
   }
 }
 

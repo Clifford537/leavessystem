@@ -2,7 +2,9 @@ import {
   Component,
   OnInit,
   ViewChild,
-  TemplateRef
+  TemplateRef,
+  Pipe,
+  PipeTransform
 } from '@angular/core';
 import {
   FormBuilder,
@@ -25,6 +27,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import { MatTableModule } from '@angular/material/table';
+import { MatRadioModule } from '@angular/material/radio';
 import { FullCalendarModule } from '@fullcalendar/angular';
 import { CalendarOptions, EventInput } from '@fullcalendar/core';
 import dayGridPlugin from '@fullcalendar/daygrid';
@@ -35,8 +38,16 @@ import {
   CreateLeaveDto
 } from '../../core/services/leave.service';
 import { finalize } from 'rxjs/operators';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 
-// Define custom EventInput interface to type extendedProps
+@Pipe({ name: 'safeUrl', standalone: true })
+export class SafeUrlPipe implements PipeTransform {
+  constructor(private sanitizer: DomSanitizer) {}
+  transform(url: string): SafeResourceUrl {
+    return this.sanitizer.bypassSecurityTrustResourceUrl(url);
+  }
+}
+
 interface CustomEventInput extends EventInput {
   extendedProps: {
     status: string;
@@ -63,7 +74,9 @@ interface CustomEventInput extends EventInput {
     MatDatepickerModule,
     MatNativeDateModule,
     MatTableModule,
-    FullCalendarModule
+    MatRadioModule,
+    FullCalendarModule,
+    SafeUrlPipe
   ],
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.scss']
@@ -84,9 +97,12 @@ export class DashboardComponent implements OnInit {
   searchQuery: string = '';
   selectedLeave: LeaveTransaction | null = null;
   loading = false;
+  selectedFile: File | null = null;
+  selectedFileName: string | null = null;
   readonly MIN_SPIN_MS = 2000;
   errorMsg: string | null = null;
-  displayedColumns = ['index', 'Type', 'From', 'To', 'Days', 'Status'];
+  displayedColumns = ['index', 'Type', 'From', 'To', 'Days', 'Status', 'Attachment'];
+
   calendarOptions: CalendarOptions = {
     initialView: 'dayGridMonth',
     plugins: [dayGridPlugin],
@@ -95,7 +111,7 @@ export class DashboardComponent implements OnInit {
       center: 'title',
       right: ''
     },
-    displayEventTime: false, // Suppress time display in event titles
+    displayEventTime: false,
     events: [],
     eventClassNames: (arg) => {
       return arg.event.extendedProps['status'].toLowerCase();
@@ -120,28 +136,46 @@ export class DashboardComponent implements OnInit {
       LeaveTypeID: [null, Validators.required],
       fDate: [null, Validators.required],
       tDate: [null, Validators.required],
-      Notes: ['']
+      Notes: [''],
+      attachmentType: ['file'],
+      Attachment: ['']
     });
     this.refresh();
   }
 
-  // Method to get event color based on leave status
   getLeaveColor(status: string): string {
     switch (status.toLowerCase()) {
       case 'approved':
-        return '#129140ff'; // Green for Approved
+        return '#129140ff';
       case 'pending':
-        return '#eab308'; // Yellow for Pending
+        return '#eab308';
       case 'rejected':
-        return '#d35933ff'; // Brown for Rejected
+        return '#d35933ff';
       default:
-        return '#0284c7'; // Blue as fallback
+        return '#0284c7';
     }
   }
 
-  /* ─────── Dialog Controls ─────── */
+  isImage(url: string): boolean {
+    return /\.(jpg|jpeg|png)$/i.test(url);
+  }
+
+  isPdf(url: string): boolean {
+    return /\.pdf$/i.test(url);
+  }
+
+  isDocx(url: string): boolean {
+    return /\.docx$/i.test(url);
+  }
+
+  isUrl(url: string): boolean {
+    return /^https?:\/\/.+/i.test(url) && !this.isImage(url) && !this.isPdf(url) && !this.isDocx(url);
+  }
+
   openLeaveDialog(): void {
-    this.leaveForm.reset();
+    this.leaveForm.reset({ attachmentType: 'file' });
+    this.selectedFile = null;
+    this.selectedFileName = null;
     this.errorMsg = null;
     this.dialogRef = this.dialog.open(this.leaveDialog, { width: '480px' });
   }
@@ -159,16 +193,52 @@ export class DashboardComponent implements OnInit {
     this.dialog.open(this.leaveDetailsDialog, { width: '480px' });
   }
 
-  /* ─────── Submit Leave ─────── */
+  onAttachmentTypeChange(): void {
+    this.selectedFile = null;
+    this.selectedFileName = null;
+    this.leaveForm.patchValue({ Attachment: '' });
+  }
+
+  onFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files.length > 0) {
+      this.selectedFile = input.files[0];
+      this.selectedFileName = this.selectedFile.name;
+      this.leaveForm.patchValue({ Attachment: '' });
+    }
+  }
+
+  validateUrl(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const url = input.value;
+    if (url && !/^https?:\/\/.+/.test(url)) {
+      this.leaveForm.get('Attachment')?.setErrors({ pattern: true });
+    } else {
+      this.leaveForm.get('Attachment')?.setErrors(null);
+    }
+  }
+
   submit(): void {
     if (this.leaveForm.invalid) return;
 
     this.errorMsg = null;
     this.loading = true;
     const start = Date.now();
-    const dto: CreateLeaveDto = this.leaveForm.value;
+    const { LeaveTypeID, fDate, tDate, Notes, attachmentType, Attachment } = this.leaveForm.value;
+    const formData = new FormData();
 
-    this.leaveSvc.createLeave(dto)
+    formData.append('LeaveTypeID', LeaveTypeID);
+    formData.append('fDate', new Date(fDate).toISOString().split('T')[0]);
+    formData.append('tDate', new Date(tDate).toISOString().split('T')[0]);
+    if (Notes) formData.append('Notes', Notes);
+    
+    if (attachmentType === 'file' && this.selectedFile) {
+      formData.append('Attachment', this.selectedFile);
+    } else if (attachmentType === 'link' && Attachment) {
+      formData.append('Attachment', Attachment);
+    }
+
+    this.leaveSvc.createLeave(formData)
       .pipe(finalize(() => {
         const elapsed = Date.now() - start;
         const stop = () => (this.loading = false);
@@ -192,7 +262,6 @@ export class DashboardComponent implements OnInit {
       });
   }
 
-  /* ─────── Refresh & Filter ─────── */
   private refresh(): void {
     this.loading = true;
     const start = Date.now();
@@ -225,11 +294,11 @@ export class DashboardComponent implements OnInit {
       }))
       .subscribe({
         next: leaves => {
-          console.log('Raw Leaves:', leaves); // Debug: Log raw leave data
+          console.log('Raw Leaves:', leaves);
           this.myLeaves = leaves;
           this.leaveTypes = [...new Set(leaves.map(l => l.LeaveTypeName))]
-            .filter(type => !/9p|leavsetype/i.test(type)); // Exclude invalid leave types
-          console.log('Leave Types:', this.leaveTypes); // Debug: Log filtered leave types
+            .filter(type => !/9p|leavsetype/i.test(type));
+          console.log('Leave Types:', this.leaveTypes);
           this.applyFilter();
         },
         error: err => {
@@ -245,12 +314,12 @@ export class DashboardComponent implements OnInit {
       const query = this.searchQuery.toLowerCase().trim();
       const matchesSearch = query
         ? l.LeaveTypeName.toLowerCase().includes(query) ||
-          (l.Notes && l.Notes.toLowerCase().includes(query))
+          (l.Notes && l.Notes.toLowerCase().includes(query)) ||
+          (l.Attachment && l.Attachment.toLowerCase().includes(query))
         : true;
       return matchesType && matchesSearch;
     });
 
-    // Calculate leave count per day for data-leave-count
     const leaveCountByDay: { [key: string]: number } = {};
     this.filteredLeaves.forEach(leave => {
       const start = new Date(leave.fDate);
@@ -262,12 +331,12 @@ export class DashboardComponent implements OnInit {
     });
 
     this.calendarOptions.events = this.filteredLeaves.map(leave => {
-      const leaveTypeName = leave.LeaveTypeName.replace(/9p\s*|leavsetype\s*/gi, '').trim() || 'Unknown'; // Enhanced sanitization
-      const status = leave.Approved.toLowerCase(); // Use lowercase status
-      console.log('Processing Leave:', leave.ID, 'Raw LeaveTypeName:', leave.LeaveTypeName, 'Sanitized:', leaveTypeName, 'Status:', status); // Debug: Log sanitization and status
+      const leaveTypeName = leave.LeaveTypeName.replace(/9p\s*|leavsetype\s*/gi, '').trim() || 'Unknown';
+      const status = leave.Approved.toLowerCase();
+      console.log('Processing Leave:', leave.ID, 'Raw LeaveTypeName:', leave.LeaveTypeName, 'Sanitized:', leaveTypeName, 'Status:', status);
       const event: CustomEventInput = {
         id: leave.ID.toString(),
-        title: `Your leave is ${status}: Click to view details for leave: ${leaveTypeName}`, // Updated title format with status
+        title: `Your leave is ${status}: Click to view details for leave: ${leaveTypeName}`,
         start: new Date(leave.fDate),
         end: new Date(new Date(leave.tDate).setDate(new Date(leave.tDate).getDate() + 1)),
         color: this.getLeaveColor(leave.Approved),
@@ -281,7 +350,6 @@ export class DashboardComponent implements OnInit {
     });
   }
 
-  /* ─────── Date Constraints ─────── */
   fromDateFilter = (date: Date | null): boolean => {
     if (!date) return false;
     const today = new Date();

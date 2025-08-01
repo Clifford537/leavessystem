@@ -26,7 +26,7 @@
     </mat-form-field>
     <mat-form-field appearance="outline" class="search-field">
       <mat-label>Search</mat-label>
-      <input matInput [(ngModel)]="searchQuery" (input)="applyFilter()" placeholder="Search by type or notes">
+      <input matInput [(ngModel)]="searchQuery" (input)="applyFilter()" placeholder="Search by type, notes, or attachment">
       <mat-icon matSuffix>search</mat-icon>
     </mat-form-field>
   </div>
@@ -95,13 +95,44 @@
           placeholder="Optional – reason or additional info">
         </textarea>
       </mat-form-field>
+      <!-- Attachment Section -->
+      <div class="attachment-section">
+        <mat-label>Attachment</mat-label>
+        <mat-radio-group formControlName="attachmentType" (change)="onAttachmentTypeChange()">
+          <mat-radio-button value="file">Upload File</mat-radio-button>
+          <mat-radio-button value="link">Provide Link</mat-radio-button>
+        </mat-radio-group>
+        <div *ngIf="leaveForm.get('attachmentType')?.value === 'file'" class="file-upload">
+          <input
+            type="file"
+            accept=".pdf,.docx,.jpg,.jpeg,.png"
+            (change)="onFileSelected($event)"
+            id="fileInput"
+            #fileInput />
+          <label for="fileInput" class="file-label">
+            {{ selectedFileName || 'Choose a file (PDF, DOCX, JPG, PNG)' }}
+          </label>
+        </div>
+        <mat-form-field *ngIf="leaveForm.get('attachmentType')?.value === 'link'" appearance="outline" class="field full">
+          <mat-label>Attachment URL</mat-label>
+          <input
+            matInput
+            formControlName="Attachment"
+            placeholder="Enter URL (e.g., https://example.com/doc)"
+            pattern="https?://.+"
+            (input)="validateUrl($event)" />
+          <mat-error *ngIf="leaveForm.get('Attachment')?.hasError('pattern')">
+            Please enter a valid URL (http:// or https://)
+          </mat-error>
+        </mat-form-field>
+      </div>
     </form>
     <mat-dialog-actions align="end">
       <button mat-stroked-button mat-dialog-close class="cancel">Cancel</button>
       <button
         mat-raised-button
         color="primary"
-        [disabled]="leaveForm.invalid || loading"
+        [disabled]="leaveForm.invalid || loading || (leaveForm.get('attachmentType')?.value && !leaveForm.get('Attachment')?.value && !selectedFile)"
         (click)="submit()">
         <mat-icon *ngIf="!loading">send</mat-icon>
         <mat-progress-spinner
@@ -172,6 +203,15 @@
             <span class="status-badge" [ngClass]="l.Approved.toLowerCase()">{{ l.Approved }}</span>
           </td>
         </ng-container>
+        <ng-container matColumnDef="Attachment">
+          <th mat-header-cell *matHeaderCellDef>Attachment</th>
+          <td mat-cell *matCellDef="let l">
+            <a *ngIf="l.Attachment" [href]="l.Attachment" target="_blank" class="attachment-link">
+              <mat-icon>attachment</mat-icon> View
+            </a>
+            <span *ngIf="!l.Attachment">None</span>
+          </td>
+        </ng-container>
         <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
         <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
       </table>
@@ -219,6 +259,35 @@
         <div class="detail-row" *ngIf="selectedLeave?.Notes">
           <span class="label">Notes</span>
           <span class="value">{{ selectedLeave?.Notes }}</span>
+        </div>
+        <div class="detail-row" *ngIf="selectedLeave">
+          <span class="label">Attachment</span>
+          <span class="value">
+            <ng-container *ngIf="selectedLeave.Attachment; else noAttachment">
+              <ng-container *ngIf="isImage(selectedLeave.Attachment)">
+                <img [src]="selectedLeave.Attachment" alt="Attachment Preview" class="attachment-preview" />
+              </ng-container>
+              <ng-container *ngIf="isPdf(selectedLeave.Attachment)">
+                <iframe [src]="selectedLeave.Attachment | safeUrl" class="attachment-preview pdf-preview"></iframe>
+              </ng-container>
+              <ng-container *ngIf="isDocx(selectedLeave.Attachment)">
+                <span class="attachment-message">
+                  DOCX preview not supported. 
+                  <a [href]="selectedLeave.Attachment" target="_blank" class="attachment-link">
+                    <mat-icon>attachment</mat-icon> Download
+                  </a>
+                </span>
+              </ng-container>
+              <ng-container *ngIf="isUrl(selectedLeave.Attachment)">
+                <a [href]="selectedLeave.Attachment" target="_blank" class="attachment-link">
+                  <mat-icon>attachment</mat-icon> View Link
+                </a>
+              </ng-container>
+            </ng-container>uploads
+            <ng-template #noAttachment>
+              <span>None</span>
+            </ng-template>
+          </span>
         </div>
       </mat-card>
     </mat-dialog-content>

@@ -1,14 +1,15 @@
-const express      = require('express');
-const router       = express.Router();
-const controller   = require('../controllers/leaveController'); // 👈 everything in here now
-const verifyToken  = require('../middlewares/verifyToken');
-const verifyRole   = require('../middlewares/verifyRole');
+const express = require('express');
+const router = express.Router();
+const controller = require('../controllers/leaveController');
+const verifyToken = require('../middlewares/verifyToken');
+const verifyRole = require('../middlewares/verifyRole');
+const fileUpload = require('../middlewares/fileOrLinkUploadMiddleware'); // 👈 NEW
 
 // ─────────── Leave Request Routes ─────────── //
 router.get('/mine', verifyToken, controller.getMyLeaves);
 router.get('/balances', verifyToken, controller.getLeaveBalances);
 router.get('/by-range', verifyToken, verifyRole('admin', 'hr'), controller.getLeavesByRange);
-router.post('/', verifyToken, controller.createLeave);
+router.post('/', verifyToken, fileUpload, controller.createLeave); // 👈 UPDATED
 router.post('/:id/approve', verifyToken, verifyRole('admin', 'hr'), controller.approveLeave);
 router.get('/', verifyToken, verifyRole('admin', 'hr'), controller.getAllLeaves);
 

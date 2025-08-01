@@ -1,7 +1,9 @@
 const express = require('express');
 require('dotenv').config();
-const app = express();
 const cors = require('cors');
+const path = require('path');
+
+const app = express();
 
 // Route imports
 const authRoutes = require('./routes/authRoutes');
@@ -11,10 +13,12 @@ const jobTitleRoutes = require('./routes/jobTitleRoutes');
 const jobGroupRoutes = require('./routes/jobGroupRoutes');
 const userRoutes = require('./routes/userRoutes');
 
-
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// Serve uploaded files
+app.use('/uploads', express.static(path.join(__dirname, 'uploads'))); // ADDED
 
 // Routes
 app.use('/api/auth', authRoutes);

@@ -1,3 +1,7 @@
+// const axios = require('axios');
+// const sharp = require('sharp');
+// const path = require('path');
+// const fs = require('fs');
 const pool = require('../db');
 
 //* -------------------------------------------------------------------------- */
@@ -8,7 +12,7 @@ const pool = require('../db');
  * @param {number}  staffId
  * @param {number}  leaveTypeId
  * @param {object}  conn             – existing pool / connection
- * @param {boolean} includePending   – true ⇒ subtract Approved + Pending
+ * @param {boolean} includePending   – true ⇒ subtract Approved + Pending
  *                                      false ⇒ subtract Approved only
  * @throws  if staff or leave type not found
  */
@@ -16,9 +20,9 @@ async function getRemainingDays(
   staffId,
   leaveTypeId,
   conn = pool,
-  includePending = false            // default: Approved‑only
+  includePending = false            // default: Approved-only
 ) {
-  /* annual allowance (gender‑specific) */
+  /* annual allowance (gender-specific) */
   const [[allow]] = await conn.execute(
     `SELECT s.Gender,
             CASE s.Gender WHEN 'Male' THEN lt.Male ELSE lt.Female END AS AnnualAllowance
@@ -50,6 +54,8 @@ async function getRemainingDays(
 /* -------------------------------------------------------------------------- */
 /* Controllers                                                                */
 /* -------------------------------------------------------------------------- */
+
+// GET /api/leaves
 exports.getAllLeaves = async (req, res) => {
   try {
     const [rows] = await pool.execute(
@@ -62,6 +68,7 @@ exports.getAllLeaves = async (req, res) => {
               lt.tDate,
               lt.Notes,
               lt.DaysDiff,
+              lt.Attachment,
               lt.Approved,
               lt.UserID,
               lt.ApprovedID
@@ -77,6 +84,7 @@ exports.getAllLeaves = async (req, res) => {
   }
 };
 
+// GET /api/leave/balances
 exports.getLeaveBalances = async (req, res) => {
   try {
     const staffId = req.user.id;
@@ -84,12 +92,12 @@ exports.getLeaveBalances = async (req, res) => {
       'SELECT ID, Name, Male, Female FROM leave_types'
     );
 
-    /* subtract **Approved** only */
+    /* subtract Approved only */
     const balances = await Promise.all(
       types.map(async (lt) => ({
         leaveTypeId:   lt.ID,
         leaveTypeName: lt.Name,
-        remaining:     await getRemainingDays(staffId, lt.ID)   // <- no Pending
+        remaining:     await getRemainingDays(staffId, lt.ID)   // no Pending
       }))
     );
 
@@ -100,16 +108,22 @@ exports.getLeaveBalances = async (req, res) => {
   }
 };
 
+// POST /api/leaves
 exports.createLeave = async (req, res) => {
   const { LeaveTypeID, fDate, tDate, Notes } = req.body;
   const StaffID = req.user.id;
-  const UserID  = req.user.id;
+  const UserID = req.user.id;
 
-  /* basic validation */
+  // Accept either file or link
+  const uploadedFile = req.file ? `/uploads/${req.file.filename}` : null;
+  const providedLink = !req.file && req.body.Attachment ? req.body.Attachment : null;
+  const Attachment = uploadedFile || providedLink;
+
+  /* Validation */
   const errors = {};
   if (!LeaveTypeID) errors.LeaveTypeID = 'Leave type required';
-  if (!fDate)       errors.fDate       = 'Start date required';
-  if (!tDate)       errors.tDate       = 'End date required';
+  if (!fDate) errors.fDate = 'Start date required';
+  if (!tDate) errors.tDate = 'End date required';
   if (Object.keys(errors).length) {
     return res.status(400).json({ message: 'Validation error', errors });
   }
@@ -118,7 +132,6 @@ exports.createLeave = async (req, res) => {
   try {
     await conn.beginTransaction();
 
-    /* confirm leave type exists */
     const [[ltExists]] = await conn.execute(
       'SELECT 1 FROM leave_types WHERE ID = ?',
       [LeaveTypeID]
@@ -128,7 +141,6 @@ exports.createLeave = async (req, res) => {
       return res.status(404).json({ message: 'Invalid leave type' });
     }
 
-    /* calculate requested days */
     const [[{ DaysDiff }]] = await conn.execute(
       'SELECT DATEDIFF(?, ?) + 1 AS DaysDiff',
       [tDate, fDate]
@@ -138,7 +150,6 @@ exports.createLeave = async (req, res) => {
       return res.status(400).json({ message: 'End date must be after start date' });
     }
 
-    /* balance check – Approved‑only */
     const remaining = await getRemainingDays(StaffID, LeaveTypeID, conn, false);
     if (DaysDiff > remaining) {
       await conn.rollback();
@@ -147,20 +158,20 @@ exports.createLeave = async (req, res) => {
       });
     }
 
-    /* insert Pending request */
     const [ins] = await conn.execute(
       `INSERT INTO leave_transactions
          (StaffID, LeaveTypeID, fDate, tDate, Notes,
-          DaysDiff, Approved, UserID, ApprovedID)
-       VALUES (?, ?, ?, ?, ?, ?, 'Pending', ?, 0)`,
-      [StaffID, LeaveTypeID, fDate, tDate, Notes || null, DaysDiff, UserID]
+          DaysDiff, Attachment, Approved, UserID, ApprovedID)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'Pending', ?, 0)`,
+      [StaffID, LeaveTypeID, fDate, tDate, Notes || null, DaysDiff, Attachment, UserID]
     );
 
     await conn.commit();
     res.status(201).json({
       message: 'Leave request submitted',
-      leaveId:  ins.insertId,
-      daysLeft: remaining            // balance unchanged until approval
+      leaveId: ins.insertId,
+      daysLeft: remaining,
+      attachment: Attachment || null
     });
   } catch (err) {
     await conn.rollback();
@@ -171,6 +182,7 @@ exports.createLeave = async (req, res) => {
   }
 };
 
+// PUT /api/leaves/:id/approve
 exports.approveLeave = async (req, res) => {
   const leaveId   = req.params.id;
   const { status }= req.body;
@@ -207,11 +219,7 @@ exports.approveLeave = async (req, res) => {
   }
 };
 
-/**
- * Get leave transactions for the currently‑logged‑in user
- * Route: GET /api/leave/mine
- * Auth: any authenticated user (verifyToken)
- */
+// GET /api/leave/mine
 exports.getMyLeaves = async (req, res) => {
   const staffId = req.user.id;
 
@@ -224,6 +232,7 @@ exports.getMyLeaves = async (req, res) => {
               lt.tDate,
               lt.Notes,
               lt.DaysDiff,
+              lt.Attachment,
               lt.Approved
          FROM leave_transactions lt
          JOIN leave_types t ON t.ID = lt.LeaveTypeID
@@ -238,11 +247,8 @@ exports.getMyLeaves = async (req, res) => {
     return res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
-/**
- * GET /api/leaves/by-range?from=YYYY-MM-DD&to=YYYY-MM-DD
- * Returns all leave transactions that overlap the given date range
- * Includes each user's remaining leave balance for the associated leave type
- */
+
+// GET /api/leaves/by-range?from=YYYY-MM-DD&to=YYYY-MM-DD
 exports.getLeavesByRange = async (req, res) => {
   const { from, to } = req.query;
 
@@ -260,6 +266,7 @@ exports.getLeavesByRange = async (req, res) => {
               lt.fDate,
               lt.tDate,
               lt.DaysDiff,
+              lt.Attachment,
               lt.Approved
          FROM leave_transactions lt
          JOIN staff s ON s.ID = lt.StaffID
@@ -301,10 +308,6 @@ exports.getLeavesByRange = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
-
-// ─────────────────────────────────────────────────────────────
-// Leave Statistics
-// ─────────────────────────────────────────────────────────────
 
 // GET /api/leaves/stats/status
 exports.getLeaveStatusStats = async (req, res) => {

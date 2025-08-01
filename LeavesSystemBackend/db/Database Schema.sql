@@ -61,6 +61,7 @@ CREATE TABLE leave_transactions (
     Approved ENUM('Pending', 'Approved', 'Rejected') DEFAULT 'Pending',
     UserID INT(11) DEFAULT 0,
     ApprovedID INT(11) DEFAULT 0,
+    Attachment  text  NULL
     PRIMARY KEY (ID),
     FOREIGN KEY (StaffID) REFERENCES staff(ID),
     FOREIGN KEY (LeaveTypeID) REFERENCES leave_types(ID)
@@ -85,3 +86,8 @@ CREATE TABLE staff_banks (
     PRIMARY KEY (ID),
     FOREIGN KEY (Employee) REFERENCES staff(ID)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+
+ALTER TABLE  leave_transactions ADD COLUMN AttachmentPreview VARCHAR(255);
+ALTER TABLE leave_transactions
+ADD COLUMN AttachmentLink VARCHAR(2083) NULL;
