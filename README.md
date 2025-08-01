@@ -34,7 +34,8 @@ A full-stack Leave Management System built using **Angular** for the frontend an
 ### 1. 🔐 Login & Password Setup
 > Allows users to securely log in and set a password during registration.
 
-![Login Page](IMG1.PNG)
+![Login Page](./IMG1.PNG)
+![Job List](./IMG1.png)
 
 ---
 
