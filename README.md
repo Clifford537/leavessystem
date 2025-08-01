@@ -82,8 +82,8 @@ A full-stack Leave Management System built using **Angular** for the frontend an
 
 1. **Clone the Repository**
    ```bash
-   git clone https://github.com/your-username/leave-management-system.git
-   cd leave-management-system
+   git clone https://github.com/Clifford537/leavessystem.git
+   cd leavessystem
    ```
 
 2. **Backend Setup**
