@@ -34,36 +34,35 @@ A full-stack Leave Management System built using **Angular** for the frontend an
 ### 1. 🔐 Login & Password Setup
 > Allows users to securely log in and set a password during registration.
 
-![Login Page](./IMG1.PNG)
-![Job List](./IMG1.png)
+![Login Page](./IMG1.png)
 
 ---
 
 ### 2. 📊 Staff Dashboard
 > Users can view their current leave balances, request new leave, and see status updates.
 
-![Staff Dashboard](IMG2.PNG)
+![Staff Dashboard](IMG2.png)
 
 ---
 
 ### 3. 🧑‍💼 Admin Dashboard
 > Admin users have access to manage staff, approve or reject leave, and view analytics.
 
-![Admin Dashboard](IMG3.PNG)
+![Admin Dashboard](IMG3.png)
 
 ---
 
 ### 4. 📝 Leave Request Form
 > Users can select leave type, enter dates, and submit the request. Leave balances are auto-updated.
 
-![Leave Request](./IMG4.PNG)
+![Leave Request](./IMG4.png)
 
 ---
 
 ### 5. 📂 Leave Records Overview
 > Staff and admins can view history of leave applications and decisions.
 
-![Leave Records](IMG5.PNG)
+![Leave Records](IMG5.png)
 
 ---
 
