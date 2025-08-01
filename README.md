@@ -25,7 +25,7 @@ A full-stack Leave Management System built using **Angular** for the frontend an
 | Frontend      | Angular        |
 | Backend       | Express.js     |
 | Database      | MySQL |
-| Authentication | JWT / Session-based (as implemented) |
+| Authentication | JWT / Session-based|
 
 ---
 
